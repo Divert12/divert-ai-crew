@@ -20,8 +20,8 @@ L’objectif : automatiser des tâches complexes sans code.
 
 ## 🔑 Fonctionnalités principales
 
-- 🤖 Crée ton équipe d’agents IA personnalisée  
-- ⚙️ Automatise des tâches avec des workflows visuels  
+- 🤖 Ajouter ton équipe d’agents IA a Ton tableau de bord 
+- ⚙️ Automatise des tâches avec des workflows 
 - 🔐 Gère tes clés et connexions de manière sécurisée  
 - 📊 Suis les exécutions en temps réel  
 - 🔁 Clone des workflows et adapte-les à tes besoins
