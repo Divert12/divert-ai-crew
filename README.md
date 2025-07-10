@@ -1,6 +1,3 @@
-Voici la **version simplifiée du README** dans un format prêt à copier dans un fichier `README.md` :
-
-```markdown
 # 🚀 Divert.ai – Plateforme d'automatisation avec IA & Workflows
 
 > **Automatise tes tâches avec des équipes d'agents IA (CrewAI) et des workflows visuels (n8n)**
