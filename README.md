@@ -156,8 +156,5 @@ Besoin d’aide, envie de proposer une idée ou de contribuer ?
 
 **Fait avec ❤️ par des passionnés d’IA & d’automatisation**
 
-```
 
-Souhaites-tu que je le transforme directement en fichier téléchargeable (`README.md`) ?
-```
 
