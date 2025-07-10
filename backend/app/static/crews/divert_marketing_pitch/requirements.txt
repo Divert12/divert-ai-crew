@@ -1,0 +1,7 @@
+# Requirements pour l'équipe Divert.ai Marketing Pitch Generator
+crewai>=0.28.0
+crewai-tools>=0.1.0
+langchain-huggingface>=0.0.3
+langchain>=0.1.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0

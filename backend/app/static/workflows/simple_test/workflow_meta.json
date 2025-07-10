@@ -1,0 +1,13 @@
+{
+  "name": "Simple Test Workflow",
+  "description": "Un workflow simple pour tester le clonage sans intégrations externes",
+  "category": "Test",
+  "required_services": [],
+  "required_credentials": [],
+  "webhook_path": "/webhook/simple-test-{workflow_id}",
+  "is_active": true,
+  "instructions": "Ce workflow ne nécessite aucune configuration. Il répond simplement à un webhook avec un message de succès.",
+  "tags": ["test", "webhook", "simple"],
+  "estimated_execution_time": "< 1 seconde",
+  "complexity": "Débutant"
+}

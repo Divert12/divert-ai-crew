@@ -1,0 +1,42 @@
+{
+  "name": "Marketing Pitch Creator",
+  "description": "Crée des pitches marketing convaincants pour votre produit ou service. Cette équipe d'IA analyse votre proposition de valeur et génère un pitch professionnel adapté à votre audience cible.",
+  "category": "Marketing",
+  "tags": ["marketing", "pitch", "vente", "copywriting", "communication"],
+  "author": "Divert Team",
+  "version": "1.0.0",
+  "estimated_duration": "2-3 minutes",
+  "difficulty": "beginner",
+  "inputs": {
+    "topic": {
+      "type": "string",
+      "description": "Le sujet ou produit pour lequel créer un pitch marketing",
+      "required": true,
+      "example": "Application mobile de fitness"
+    },
+    "target_audience": {
+      "type": "string",
+      "description": "Public cible du pitch",
+      "required": false,
+      "example": "Jeunes professionnels urbains"
+    },
+    "tone": {
+      "type": "string",
+      "description": "Ton du pitch (professionnel, décontracté, etc.)",
+      "required": false,
+      "default": "professionnel",
+      "example": "professionnel"
+    }
+  },
+  "outputs": {
+    "pitch": {
+      "type": "string",
+      "description": "Le pitch marketing généré"
+    },
+    "key_points": {
+      "type": "array",
+      "description": "Points clés du pitch"
+    }
+  },
+  "is_active": true
+}

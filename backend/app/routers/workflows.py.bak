@@ -1,0 +1,256 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import List, Dict, Any
+
+from app.database.database import get_db
+from app.core.security import get_current_user
+from app.services.n8n_executor import N8NExecutorService, N8NDiscoveryService
+from app.services.credential_manager import CredentialManager, INTEGRATION_TEMPLATES
+from app.models.user import User
+from app.models.workflow import Workflow, WorkflowExecution
+from app.schemas.workflow import WorkflowResponse, CredentialCreate
+from app.models.workflow import Workflow, WorkflowExecution, UserCredential 
+
+router = APIRouter()
+n8n_executor = N8NExecutorService()
+n8n_discovery = N8NDiscoveryService()
+credential_manager = CredentialManager()
+
+@router.get("/workflows", response_model=List[WorkflowResponse])
+async def get_workflows(
+    skip: int = 0,
+    limit: int = 100,
+    category: str = None,
+    db: Session = Depends(get_db)
+):
+    """Récupère la liste des workflows disponibles."""
+    query = db.query(Workflow).filter(Workflow.type == "n8n_workflow", Workflow.is_active == True)
+    
+    if category:
+        query = query.filter(Workflow.category == category)
+    
+    workflows = query.offset(skip).limit(limit).all()
+    return workflows
+
+@router.get("/workflows/{workflow_id}")
+async def get_workflow_details(
+    workflow_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Récupère les détails d'un workflow spécifique."""
+    workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    
+    # Vérifier les credentials requis pour cet utilisateur
+    required_creds = workflow.required_credentials or []
+    credential_status = credential_manager.validate_required_credentials(
+        db, current_user.id, required_creds
+    )
+    
+    return {
+        **workflow.__dict__,
+        "credential_status": credential_status,
+        "missing_credentials": [
+            cred for cred, configured in credential_status.items() 
+            if not configured
+        ]
+    }
+
+@router.post("/workflows/{workflow_id}/execute")
+async def execute_workflow(
+    workflow_id: int,
+    inputs: Dict[str, Any],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Exécute un workflow N8N."""
+    workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    
+    # Vérifier les credentials requis
+    required_creds = workflow.required_credentials or []
+    credential_status = credential_manager.validate_required_credentials(
+        db, current_user.id, required_creds
+    )
+    
+    missing_creds = [cred for cred, configured in credential_status.items() if not configured]
+    if missing_creds:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Missing credentials for: {', '.join(missing_creds)}"
+        )
+    
+    # Récupérer les credentials utilisateur
+    user_credentials = {}
+    for service in required_creds:
+        creds = credential_manager.get_user_credentials(db, current_user.id, service)
+        if creds:
+            user_credentials[service] = creds
+    
+    try:
+        # Vérifier que N8N est accessible
+        if not await n8n_executor.check_n8n_health():
+            raise HTTPException(status_code=503, detail="N8N service is not available")
+        
+        # Créer un enregistrement d'exécution
+        execution = WorkflowExecution(
+            workflow_id=workflow_id,
+            user_id=current_user.id,
+            inputs=inputs,
+            status="running"
+        )
+        db.add(execution)
+        db.commit()
+        db.refresh(execution)
+        
+        # Exécuter le workflow
+        result = await n8n_executor.execute_workflow(
+            workflow.folder_name, 
+            inputs, 
+            user_credentials
+        )
+        
+        # Mettre à jour l'exécution
+        execution.status = "success" if result["success"] else "failed"
+        execution.outputs = result.get("data", {})
+        execution.n8n_execution_id = result.get("execution_id")
+        db.commit()
+        
+        return {
+            "execution_id": execution.id,
+            "status": execution.status,
+            "result": result
+        }
+        
+    except Exception as e:
+        # Mettre à jour l'exécution en cas d'erreur
+        execution.status = "failed"
+        execution.error_message = str(e)
+        db.commit()
+        
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/credentials/{service_name}")
+async def store_credentials(
+    service_name: str,
+    credentials: CredentialCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Stocke les credentials d'un utilisateur pour un service."""
+    if service_name not in INTEGRATION_TEMPLATES:
+        raise HTTPException(status_code=400, detail=f"Unknown service: {service_name}")
+    
+    template = INTEGRATION_TEMPLATES[service_name]
+    
+    try:
+        stored_credential = credential_manager.store_user_credentials(
+            db=db,
+            user_id=current_user.id,
+            service_name=service_name,
+            credential_type=template["type"],
+            credentials=credentials.credentials
+        )
+        
+        return {
+            "message": f"Credentials stored successfully for {service_name}",
+            "credential_id": stored_credential.id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/credentials")
+async def get_user_integrations(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Récupère les intégrations configurées par l'utilisateur."""
+    integrations = credential_manager.get_user_integrations(db, current_user.id)
+    
+    return {
+        "configured_integrations": integrations,
+        "available_integrations": {
+            name: {
+                "type": template["type"],
+                "fields": template["fields"],
+                "instructions": template["instructions"]
+            }
+            for name, template in INTEGRATION_TEMPLATES.items()
+        }
+    }
+
+@router.delete("/credentials/{service_name}")
+async def delete_credentials(
+    service_name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Supprime les credentials d'un service."""
+    credential = db.query(UserCredential).filter(
+        UserCredential.user_id == current_user.id,
+        UserCredential.service_name == service_name
+    ).first()
+    
+    if not credential:
+        raise HTTPException(status_code=404, detail="Credentials not found")
+    
+    credential.is_active = False
+    db.commit()
+    
+    return {"message": f"Credentials for {service_name} have been deactivated"}
+
+@router.post("/sync-workflows")
+async def sync_workflows(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Synchronise les workflows depuis le système de fichiers."""
+    try:
+        discovered_workflows = n8n_discovery.discover_workflows()
+        added_count = 0
+        updated_count = 0
+        
+        for workflow_data in discovered_workflows:
+            existing = db.query(Workflow).filter(
+                Workflow.folder_name == workflow_data["folder_name"]
+            ).first()
+            
+            if existing:
+                # Mettre à jour
+                for key, value in workflow_data.items():
+                    if hasattr(existing, key):
+                        setattr(existing, key, value)
+                updated_count += 1
+            else:
+                # Créer nouveau
+                new_workflow = Workflow(**workflow_data)
+                db.add(new_workflow)
+                added_count += 1
+        
+        db.commit()
+        
+        return {
+            "message": "Workflows synchronized successfully",
+            "added": added_count,
+            "updated": updated_count,
+            "total": len(discovered_workflows)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/executions")
+async def get_user_executions(
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Récupère l'historique des exécutions de l'utilisateur."""
+    executions = db.query(WorkflowExecution).filter(
+        WorkflowExecution.user_id == current_user.id
+    ).order_by(WorkflowExecution.started_at.desc()).offset(skip).limit(limit).all()
+    
+    return executions

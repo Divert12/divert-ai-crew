@@ -1,0 +1,53 @@
+{
+  "name": "Telegram Notification Sender",
+  "description": "Envoie des notifications personnalisées via Telegram. Parfait pour les alertes, rappels et notifications automatisées.",
+  "category": "Communication",
+  "type": "n8n_workflow",
+  "version": "1.0.0",
+  "author": "Divert.ai",
+  "tags": ["telegram", "notification", "messaging", "automation"],
+  
+  "required_credentials": ["telegram"],
+  "integrations": ["Telegram"],
+  
+  "inputs": {
+    "message": {
+      "type": "string",
+      "required": true,
+      "description": "Le message à envoyer",
+      "example": "Votre rapport quotidien est prêt !"
+    },
+    "chat_id": {
+      "type": "string", 
+      "required": true,
+      "description": "ID du chat ou utilisateur Telegram",
+      "example": "@username ou 123456789"
+    }
+  },
+  
+  "outputs": {
+    "status": "Statut de l'envoi",
+    "timestamp": "Horodatage de l'envoi",
+    "message_id": "ID du message envoyé"
+  },
+  
+  "use_cases": [
+    "Notifications de système",
+    "Alertes de monitoring", 
+    "Rappels personnalisés",
+    "Notifications de workflow",
+    "Alertes de sécurité"
+  ],
+  
+  "setup_instructions": [
+    "1. Créez un bot Telegram via @BotFather",
+    "2. Récupérez le token du bot", 
+    "3. Configurez vos credentials Telegram",
+    "4. Testez avec votre chat_id"
+  ],
+  
+  "complexity": "Faible",
+  "estimated_runtime": "< 5 secondes",
+  "node_count": 3,
+  "is_active": true
+}

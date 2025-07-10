@@ -1,0 +1,47 @@
+{
+  "name": "Gmail to Google Drive",
+  "description": "Automatiquement sauvegarde les pièces jointes des emails Gmail dans Google Drive",
+  "category": "Productivity",
+  "tags": ["gmail", "google-drive", "email", "automation"],
+  "version": "1.0.0",
+  "author": "Divert.ai",
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z",
+  "required_services": ["gmail", "google_drive"],
+  "required_credentials": [
+    {
+      "service": "gmail",
+      "type": "gmailOAuth2",
+      "name": "Gmail OAuth2",
+      "description": "Accès Gmail pour lire les emails"
+    },
+    {
+      "service": "google_drive", 
+      "type": "googleDriveOAuth2Api",
+      "name": "Google Drive OAuth2",
+      "description": "Accès Google Drive pour sauvegarder les fichiers"
+    }
+  ],
+  "features": [
+    "Détection automatique des nouveaux emails",
+    "Filtrage par sujet d'email",
+    "Upload automatique vers Google Drive",
+    "Webhook pour déclenchement manuel",
+    "Réponse JSON avec statut et liens"
+  ],
+  "configuration": {
+    "email_filter": {
+      "type": "string",
+      "default": "Job Application",
+      "description": "Filtre pour le sujet des emails à traiter"
+    },
+    "drive_folder": {
+      "type": "string", 
+      "default": "root",
+      "description": "Dossier Google Drive de destination"
+    }
+  },
+  "webhook_path": "/webhook/gmail-to-drive-{workflow_id}",
+  "estimated_setup_time": "5 minutes",
+  "difficulty": "Beginner"
+}
